@@ -2,8 +2,9 @@
 #
 # serve_llms_txt — put llms_txt/ on http://localhost:9999 for an LLM to fetch.
 #
-# Local only: it binds 127.0.0.1, so nothing outside this machine can reach it.
-# The directory listing is on, so hitting the root shows what you've generated:
+# Runs Caddy in a Docker container so it survives reboots. Local only: the
+# port binds to 127.0.0.1, so nothing outside this machine can reach it.
+# Directory listing is on, so hitting the root shows what you've generated:
 #
 #   bin/serve_llms_txt
 #   curl http://localhost:9999/view_component/llms.txt
@@ -12,7 +13,20 @@
 
 set -euo pipefail
 
+name="serve-llms-txt"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/llms_txt"
 port="${PORT:-9999}"
 
-exec caddy file-server --listen "127.0.0.1:$port" --root "$root" --browse
+if ! command -v docker &>/dev/null; then
+  echo "docker not found" >&2
+  exit 1
+fi
+
+docker rm -f "$name" &>/dev/null || true
+
+exec docker run --detach --name "$name" \
+  -p "127.0.0.1:$port:$port" \
+  --restart unless-stopped \
+  -v "$root:/srv:ro" \
+  caddy:2-alpine \
+  caddy file-server --listen ":$port" --root /srv --browse
