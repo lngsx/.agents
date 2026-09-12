@@ -59,6 +59,18 @@ file. If a library uses a different doc format, don't shoehorn it in. Extend the
 script to cut that format instead, and keep the cut narrow and obvious — it
 should only ever touch the header.
 
+## Task: serve an llms.txt
+
+`bin/serve_llms_txt` serves `llms_txt/` on `http://localhost:9999`, bound to
+this machine only, so an LLM can fetch what you've generated:
+
+```console
+bin/serve_llms_txt
+```
+
+Then `http://localhost:9999/view_component/llms.txt`. Set `PORT` to move it off
+9999. It's Caddy's file server under the hood, so Caddy needs to be installed.
+
 ## Leave README.md alone
 
 README.md is unfinished. Don't read it — it isn't part of this workflow.

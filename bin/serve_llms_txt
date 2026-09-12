@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# serve_llms_txt — put llms_txt/ on http://localhost:9999 for an LLM to fetch.
+#
+# Local only: it binds 127.0.0.1, so nothing outside this machine can reach it.
+# The directory listing is on, so hitting the root shows what you've generated:
+#
+#   bin/serve_llms_txt
+#   curl http://localhost:9999/view_component/llms.txt
+#
+# Set PORT to move it off 9999.
+
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/llms_txt"
+port="${PORT:-9999}"
+
+exec caddy file-server --listen "127.0.0.1:$port" --root "$root" --browse
