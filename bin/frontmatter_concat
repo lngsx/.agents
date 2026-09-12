@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#
+# frontmatter_concat — glue Jekyll docs into one file for an LLM.
+#
+# Every doc opens with a YAML front matter block:
+#
+#     ---
+#     layout: default
+#     title: Whatever
+#     ---
+#
+# We cut that block and nothing else. The title line below it stays, which
+# gives each doc a natural boundary once the files are catted together.
+#
+# Files without front matter pass through untouched — we only cut when the
+# very first line is `---`, so a stray horizontal rule later in the body can't
+# trip us up.
+#
+# Usage:
+#   bin/frontmatter_concat docs/guide/*.md docs/best_practices.md > llms.txt
+
+set -euo pipefail
+
+for file in "$@"; do
+  if [ "$(head -n 1 "$file")" = "---" ]; then
+    sed '1,/^---$/d' "$file"
+  else
+    cat "$file"
+  fi
+  printf '\n'
+done
