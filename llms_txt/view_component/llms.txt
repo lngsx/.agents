@@ -1,0 +1,1197 @@
+
+# Best practices
+
+## Philosophy
+
+### Why ViewComponent exists
+
+ViewComponent was created to help manage the growing complexity of the GitHub.com view layer, which accumulated thousands of templates over the years, almost entirely through copy-pasting. A lack of abstraction made it challenging to make sweeping design, accessibility, and behavior improvements.
+
+ViewComponent provides a way to isolate common UI patterns for reuse, helping to improve the quality and consistency of Rails applications.
+
+### ViewComponent is to UI what ActiveRecord is to SQL
+
+ViewComponent brings [conceptual compression](https://m.signalvnoise.com/conceptual-compression-means-beginners-dont-need-to-know-sql-hallelujah/) to the practice of building user interfaces.
+
+### ViewComponent exposes existing complexity
+
+Converting an existing view/partial to a ViewComponent often exposes existing complexity. For example, a ViewComponent may need numerous arguments to be rendered, revealing the number of dependencies in the existing view code.
+
+This is good! Refactoring to use ViewComponent improves comprehension and provides a foundation for further improvement.
+
+## Organization
+
+### Two types of ViewComponents
+
+ViewComponents typically come in two forms: general-purpose and application-specific.
+
+#### General-purpose ViewComponents
+
+General-purpose ViewComponents implement common UI patterns, such as a button, form, or modal. GitHub open-sources these components as [Primer ViewComponents](https://github.com/primer/view_components).
+
+#### Application-specific ViewComponents
+
+Application-specific ViewComponents translate a domain object (such as an `ActiveRecord` model or an API response modeled as a Plain Old Ruby Object) into one or more general-purpose components.
+
+For example, `User::AvatarComponent` accepts a `User` ActiveRecord object and renders a `DesignSystem::AvatarComponent`.
+
+### Extract general-purpose ViewComponents
+
+Just as ViewComponent itself was extracted from GitHub.com, general-purpose components are best extracted once they've proven helpful across more than one area:
+
+1. Single use-case component implemented.
+2. Component adapted for general use in multiple locations in the application.
+3. Component extracted into a general-purpose ViewComponent in `app/lib` or a separate gem.
+
+### Reduce permutations
+
+When building ViewComponents, look for opportunities to consolidate similar patterns into a single implementation. Consider following standard DRY practices, abstracting once there are three or more similar instances.
+
+### Avoid one-offs
+
+Aim to minimize the amount of single-use view code. Every new component introduced adds to application maintenance burden.
+
+### Use -Component suffix
+
+While it means class names are longer and perhaps less readable, including the -`Component` suffix in component names makes it clear that the class is a component, following Rails convention of using suffixes for all non-model objects.
+
+## Implementation
+
+### Avoid inheritance
+
+Having one ViewComponent inherit from another leads to confusion, especially when each component has its own template. Instead, [use composition](https://thoughtbot.com/blog/reusable-oo-composition-vs-inheritance) to wrap one component with another.
+
+### When to use a ViewComponent for an entire route
+
+ViewComponents have less value in single-use cases like replacing a `show` view. However, it can make sense to render an entire route with a ViewComponent when unit testing is valuable, such as for views with many permutations from a state machine.
+
+When migrating an entire route to use ViewComponents, work from the bottom up, extracting portions of the page into ViewComponents first.
+
+### Test against rendered content, not instance methods
+
+ViewComponent tests should use `render_inline` and assert against the rendered output. While it can be useful to test specific component instance methods directly, it's more valuable to write assertions against what's shown to the end user:
+
+```ruby
+# good
+render_inline(MyComponent.new)
+assert_text("Hello, World!")
+
+# bad
+assert_equal(MyComponent.new.message, "Hello, World!")
+```
+
+### Most ViewComponent instance methods can be private
+
+Most ViewComponent instance methods can be private, as they will still be available in the component template:
+
+```ruby
+# good
+class MyComponent < ViewComponent::Base
+  private
+
+  def method_used_in_template
+  end
+end
+
+# bad
+class MyComponent < ViewComponent::Base
+  def method_used_in_template
+  end
+end
+```
+
+### Prefer ViewComponents over partials
+
+Use ViewComponents in place of partials.
+
+### Prefer ViewComponents over HTML-generating helpers
+
+Use ViewComponents in place of helpers that return HTML.
+
+### Avoid global state
+
+The more a ViewComponent is dependent on global state (such as request parameters or the current URL), the less likely it's to be reusable. Avoid implicit coupling to global state, instead passing it into the component explicitly:
+
+```ruby
+# good
+class MyComponent < ViewComponent::Base
+  def initialize(name:)
+    @name = name
+  end
+end
+
+# bad
+class MyComponent < ViewComponent::Base
+  def initialize
+    @name = params[:name]
+  end
+end
+```
+
+Thorough unit testing is a good way to ensure decoupling from global state.
+
+### Avoid inline Ruby in ViewComponent templates
+
+Avoid writing inline Ruby in ViewComponent templates. Try using an instance method on the ViewComponent instead:
+
+```ruby
+# good
+class MyComponent < ViewComponent::Base
+  attr_accessor :name
+
+  def message
+    "Hello, #{name}!"
+  end
+end
+```
+
+```erb
+<%# bad %>
+<% message = "Hello, #{name}" %>
+```
+
+### Prefer slots over passing markup as an argument
+
+Prefer using slots for providing markup to components. Passing markup as an argument bypasses the HTML sanitization provided by Rails, creating the potential for security issues:
+
+```erb
+# good
+<%= render(MyComponent.new) do |component| %>
+  <% component.with_name do %>
+    <strong>Hello, world!</strong>
+  <% end %>
+<% end %>
+```
+
+```erb
+# bad
+<%= render MyComponent.new(name: "<strong>Hello, world!</strong>".html_safe) %>
+```
+
+
+# Getting started
+
+## Conventions
+
+- Components are subclasses of `ViewComponent::Base` and live in `app/components`. It's common practice to create and inherit from an `ApplicationComponent` that's a subclass of `ViewComponent::Base`.
+- Component names end in -`Component`.
+- Component module names are plural, as for controllers and jobs: `Users::AvatarComponent`
+- Name components for what they render, not what they accept. (`AvatarComponent` instead of `UserComponent`)
+
+## Installation
+
+In `Gemfile`, add:
+
+```ruby
+gem "view_component"
+```
+
+## Quick start
+
+Use the component generator to create a new ViewComponent.
+
+The generator accepts a component name and a list of arguments:
+
+```console
+bin/rails generate view_component:component Example title
+
+      invoke  test_unit
+      create  test/components/example_component_test.rb
+      create  app/components/example_component.rb
+      create  app/components/example_component.html.erb
+```
+
+Available options to customize the generator are documented on the [Generators](/guide/generators.html) page.
+
+## Implementation
+
+A ViewComponent is a Ruby class that inherits from `ViewComponent::Base`:
+
+```ruby
+class ExampleComponent < ViewComponent::Base
+  erb_template <<-ERB
+    <span title="<%= @title %>"><%= content %></span>
+  ERB
+
+  def initialize(title:)
+    @title = title
+  end
+end
+```
+
+Content passed to a ViewComponent as a block is captured and assigned to the `content` accessor.
+
+Rendered in a view as:
+
+```erb
+<%= render(ExampleComponent.new(title: "my title")) do %>
+  Hello, World!
+<% end %>
+```
+
+Returning:
+
+```html
+<span title="my title">Hello, World!</span>
+```
+
+## `#with_content`
+
+Since 2.31.0
+{: .label }
+
+String content can also be passed to a ViewComponent by calling `#with_content`:
+
+```erb
+<%= render(ExampleComponent.new(title: "my title").with_content("Hello, World!")) %>
+```
+
+## Rendering from controllers
+
+It's also possible to render ViewComponents in controllers:
+
+```ruby
+def show
+  render(ExampleComponent.new(title: "My Title"))
+end
+```
+
+_Note: Content can't be passed to a component via a block in controllers. Instead, use `with_content`._
+
+When using turbo frames with [turbo-rails](https://github.com/hotwired/turbo-rails), set `content_type` as `text/html`:
+
+```ruby
+def create
+  render(ExampleComponent.new, content_type: "text/html")
+end
+```
+
+### Rendering ViewComponents to strings inside controller actions
+
+When rendering the same component multiple times for later reuse, use `render_in`:
+
+```rb
+class PagesController < ApplicationController
+  def index
+    # Doesn't work: triggers a `AbstractController::DoubleRenderError`
+    # @reusable_icon = render IconComponent.new("close")
+
+    # Doesn't work: renders the whole index view as a string
+    # @reusable_icon = render_to_string IconComponent.new("close")
+
+    # Works: renders the component as a string
+    @reusable_icon = IconComponent.new("close").render_in(view_context)
+  end
+end
+```
+
+### Rendering ViewComponents outside of the view context
+
+To render ViewComponents outside of the view context (such as in a background job, markdown processor, etc), instantiate a Rails controller:
+
+```ruby
+ApplicationController.new.view_context.render(MyComponent.new)
+```
+
+
+# Templates
+
+ViewComponents wrap a template (or several, if using [variants](https://guides.rubyonrails.org/layouts_and_rendering.html#the-variants-option)), defined in one of several ways:
+
+## Inline
+
+Since 3.0.0
+{: .label }
+
+To define a template inside a component, call the `.TEMPLATE_HANDLER_template` macro:
+
+```ruby
+class InlineErbComponent < ViewComponent::Base
+  erb_template <<~ERB
+    <h1>Hello, <%= @name %>!</h1>
+  ERB
+
+  def initialize(name)
+    @name = name
+  end
+end
+```
+
+### Interpolations
+
+When using Slim, interpolations have to be escaped, or they'll be evaluated in the context of the ViewComponent class.
+
+```ruby
+class InlineSlimComponent < ViewComponent::Base
+  slim_template <<~SLIM
+    p Hello, #{name}!
+    p Hello, \#{name}!
+  SLIM
+
+  def name
+    "World"
+  end
+end
+```
+
+will render:
+
+    <p>Hello InlineSlimComponent!</p>
+    <p>Hello World!</p>
+
+## Sibling file
+
+Place template file next to the component:
+
+```console
+app/components
+├── ...
+├── example_component.rb
+├── example_component.html.erb
+├── ...
+```
+
+## Subdirectory
+
+Since 2.7.0
+{: .label }
+
+As an alternative, views and other assets can be placed in a subdirectory with the same name as the component:
+
+```console
+app/components
+├── ...
+├── example_component.rb
+├── example_component
+|   ├── example_component.html.erb
+├── ...
+```
+
+To generate a component with a sidecar directory, use the `--sidecar` flag:
+
+```console
+bin/rails generate view_component:component Example title --sidecar
+  invoke  test_unit
+  create  test/components/example_component_test.rb
+  create  app/components/example_component.rb
+  create  app/components/example_component/example_component.html.erb
+```
+
+## `#call`
+
+Since 1.16.0
+{: .label }
+
+ViewComponents can render without a template file, by defining a `call` method:
+
+```ruby
+# app/components/inline_component.rb
+class InlineComponent < ViewComponent::Base
+  def call
+    if active?
+      link_to "Cancel integration", integration_path, method: :delete
+    else
+      link_to "Integrate now!", integration_path
+    end
+  end
+end
+```
+
+It's also possible to define methods for Action Pack variants (`phone` in this case):
+
+```ruby
+class InlineVariantComponent < ViewComponent::Base
+  def call_phone
+    link_to "Phone", phone_path
+  end
+
+  def call
+    link_to "Default", default_path
+  end
+end
+```
+
+_**Note**: `call_*` methods must be public._
+
+## Inherited
+
+Since 2.19.0
+{: .label }
+
+Component subclasses inherit the parent component's template if they don't define their own template.
+
+```ruby
+# If MyLinkComponent doesn't define a template,
+# it will fall back to the `LinkComponent` template.
+class MyLinkComponent < LinkComponent
+end
+```
+
+### Rendering parent templates
+
+Since 2.55.0
+{: .label }
+
+To render a parent component's template from a subclass' template, use `#render_parent`:
+
+```erb
+<%# my_link_component.html.erb %>
+<div class="base-component-template">
+  <%= render_parent %>
+</div>
+```
+
+If the parent supports the current variant, the variant will automatically be rendered.
+
+`#render_parent` also works with inline templates:
+
+```ruby
+class MyComponent < ViewComponent::Base
+  erb_template <<~ERB
+    <div>
+      <%= render_parent %>
+    </div>
+  ERB
+end
+```
+
+Keep in mind that `#render_parent` doesn't return a string. If a string is desired, eg. inside a `#call` method, call `#render_parent_to_string` instead. For example:
+
+```ruby
+class MyComponent < ViewComponent::Base
+  def call
+    content_tag("div") do
+      render_parent_to_string
+    end
+  end
+end
+```
+
+## Trailing whitespace
+
+Code editors commonly add a trailing newline character to source files in keeping with the Unix standard. Including trailing whitespace in component templates can result in unwanted whitespace in the HTML, eg. if the component is rendered before the period at the end of a sentence.
+
+To strip trailing whitespace from component templates, use the `strip_trailing_whitespace` class method.
+
+```ruby
+class MyComponent < ViewComponent::Base
+  # do strip whitespace
+  strip_trailing_whitespace
+
+  # don't strip whitespace
+  strip_trailing_whitespace(false)
+end
+```
+
+
+# Generators
+
+The generator accepts a component name and a list of arguments.
+
+To create an `ExampleComponent` with `title` and `content` attributes:
+
+```console
+bin/rails generate view_component:component Example title content
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  erb
+      create    app/components/example_component.html.erb
+```
+
+## Generating namespaced components
+
+To generate a namespaced `Sections::ExampleComponent`:
+
+```console
+bin/rails generate view_component:component Sections::Example title content
+
+      create  app/components/sections/example_component.rb
+      invoke  test_unit
+      create    test/components/sections/example_component_test.rb
+      invoke  erb
+      create    app/components/sections/example_component.html.erb
+```
+
+## Options
+
+You can specify options when running the generator. To alter the default values project-wide, define the configuration settings described in [API docs](/api.html#configuration).
+
+Generated ViewComponents are added to `app/components` by default. Set `config.view_component.generate.path` to use a different path.
+
+```ruby
+# config/application.rb
+config.view_component.generate.path = "app/views/components"
+config.eager_load_paths << Rails.root.join("app/views/components")
+```
+
+### Override template engine
+
+ViewComponent includes template generators for the `erb`, `haml`, and `slim` template engines and will default to the template engine specified in `config.generators.template_engine`.
+
+```console
+bin/rails generate view_component:component Example title --template-engine slim
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  slim
+      create    app/components/example_component.html.slim
+```
+
+### Override test framework
+
+By default, `config.generators.test_framework` is used.
+
+```console
+bin/rails generate view_component:component Example title --test-framework rspec
+
+      create  app/components/example_component.rb
+      invoke  rspec
+      create    spec/components/example_component_spec.rb
+      invoke  erb
+      create    app/components/example_component.html.erb
+```
+
+### Generate a [preview](/guide/previews.html)
+
+Since 2.25.0
+{: .label }
+
+```console
+bin/rails generate view_component:component Example title --preview
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  preview
+      create    test/components/previews/example_component_preview.rb
+      invoke  erb
+      create    app/components/example_component.html.erb
+```
+
+### Generate a [Stimulus controller](/guide/javascript_and_css.html#stimulus)
+
+Since 2.38.0
+{: .label }
+
+```console
+bin/rails generate view_component:component Example title --stimulus
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  stimulus
+      create    app/components/example_component_controller.js
+      invoke  erb
+      create    app/components/example_component.html.erb
+```
+
+To always generate a Stimulus controller, set `config.view_component.generate.stimulus_controller = true`.
+
+To generate a TypeScript controller instead of a JavaScript controller, either:
+
+- Pass the `--typescript` option
+- Set `config.view_component.generate.typescript = true`
+
+### Generate [locale files](/guide/translations.html)
+
+Since 2.47.0
+{: .label }
+
+```console
+bin/rails generate view_component:component Example title --locale
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  locale
+      create    app/components/example_component.yml
+      invoke  erb
+      create    app/components/example_component.html.erb
+```
+
+To always generate locale files, set `config.view_component.generate.locale = true`.
+
+To generate translations in distinct locale files, set `config.view_component.generate.distinct_locale_files = true` to generate as many files as configured in `I18n.available_locales`.
+
+### Place the view in a sidecar directory
+
+Since 2.16.0
+{: .label }
+
+```console
+bin/rails generate view_component:component Example title --sidecar
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  erb
+      create    app/components/example_component/example_component.html.erb
+```
+
+To always generate in the sidecar directory, set `config.view_component.generate.sidecar = true`.
+
+### Use [inline template](/guide/templates.html#inline) (no template file)
+
+```console
+bin/rails generate view_component:component Example title --inline
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  erb
+```
+
+### Use [call method](/guide/templates.html#call) (no template file)
+
+```console
+bin/rails generate view_component:component Example title --call
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  erb
+```
+
+### Specify the parent class
+
+Since 2.41.0
+{: .label }
+
+By default, `ApplicationComponent` is used if defined, `ViewComponent::Base` otherwise.
+
+```console
+bin/rails generate view_component:component Example title content --parent MyBaseComponent
+
+      create  app/components/example_component.rb
+      invoke  test_unit
+      create    test/components/example_component_test.rb
+      invoke  erb
+      create    app/components/example_component.html.erb
+```
+
+To always use a specific parent class, set `config.view_component.parent_class = "MyBaseComponent"`.
+
+### Skip collision check
+
+The generator prevents naming collisions with existing components. To skip this check and force the generator to run, use the `--skip-collision-check` or `--force` option.
+
+
+# Conditional rendering
+
+Since 1.8.0
+{: .label }
+
+Components can implement a `#render?` method to be called after initialization to determine if the component should render.
+
+Traditionally, the logic for whether to render a view could go in either the component template:
+
+```erb
+<% if user.requires_confirmation? %>
+  <div class="alert">Please confirm your email address.</div>
+<% end %>
+```
+
+or the view that renders the component:
+
+```erb
+<% if current_user.requires_confirmation? %>
+  <%= render(ConfirmEmailComponent.new(user: current_user)) %>
+<% end %>
+```
+
+Using the `#render?` hook simplifies the view:
+
+```ruby
+class ConfirmEmailComponent < ViewComponent::Base
+  erb_template <<-ERB
+    <div class="banner">
+      Please confirm your email address.
+    </div>
+  ERB
+
+  def initialize(user:)
+    @user = user
+  end
+
+  def render?
+    @user.requires_confirmation?
+  end
+end
+```
+
+```erb
+<%= render(ConfirmEmailComponent.new(user: current_user)) %>
+```
+
+_To assert whether a component has been rendered, use `assert_component_rendered` / `refute_component_rendered` from `ViewComponent::TestHelpers`._
+
+
+# Collections
+
+Since 2.1.0
+{: .label }
+
+Like [Rails partials](https://guides.rubyonrails.org/layouts_and_rendering.html#rendering-collections), it's possible to render a collection with ViewComponents, using `with_collection`:
+
+```erb
+<%= render(ProductComponent.with_collection(@products)) %>
+```
+
+```ruby
+class ProductComponent < ViewComponent::Base
+  def initialize(product:)
+    @product = product
+  end
+end
+```
+
+[By default](https://github.com/viewcomponent/view_component/blob/89f8fab4609c1ef2467cf434d283864b3c754473/lib/view_component/base.rb#L249), the component name is used to define the parameter passed into the component from the collection.
+
+## `with_collection_parameter`
+
+Use `with_collection_parameter` to change the name of the collection parameter:
+
+```ruby
+class ProductComponent < ViewComponent::Base
+  with_collection_parameter :item
+
+  def initialize(item:)
+    @item = item
+  end
+end
+```
+
+## Additional arguments
+
+Additional arguments besides the collection are passed to each component instance:
+
+```erb
+<%= render(ProductComponent.with_collection(@products, notice: "hi")) %>
+```
+
+```ruby
+class ProductComponent < ViewComponent::Base
+  with_collection_parameter :item
+
+  erb_template <<-ERB
+    <li>
+      <h2><%= @item.name %></h2>
+      <span><%= @notice %></span>
+    </li>
+  ERB
+
+  def initialize(item:, notice:)
+    @item = item
+    @notice = notice
+  end
+end
+```
+
+## Collection counter
+
+Since 2.5.0
+{: .label }
+
+ViewComponent defines a counter variable matching the parameter name above, followed by `_counter`. To access the variable, add it to `initialize` as an argument:
+
+```ruby
+class ProductComponent < ViewComponent::Base
+  erb_template <<-ERB
+    <li>
+      <%= @counter %> <%= @product.name %>
+    </li>
+  ERB
+
+  def initialize(product:, product_counter:)
+    @product = product
+    @counter = product_counter
+  end
+end
+```
+
+## Collection iteration context
+
+Since 2.33.0
+{: .label }
+
+ViewComponent defines an iteration variable matching the parameter name above, followed by `_iteration`. This gives contextual information about the iteration to components within the collection (`#size`, `#index`, `#first?`, and `#last?`).
+
+To access the variable, add it to `initialize` as an argument:
+
+```ruby
+class ProductComponent < ViewComponent::Base
+  erb_template <<-ERB
+    <li class="<%= "featured" if @iteration.first? %>">
+      <%= @product.name %>
+    </li>
+  ERB
+
+  def initialize(product:, product_iteration:)
+    @product = product
+    @iteration = product_iteration
+  end
+end
+```
+
+## Spacer components
+
+Since 3.20.0
+{: .label }
+
+Set `:spacer_component` as an instantiated component to render between items:
+
+```erb
+<%= render(ProductComponent.with_collection(@products, spacer_component: SpacerComponent.new)) %>
+```
+
+Which will render the SpacerComponent component between `ProductComponent`s.
+
+
+# Testing
+
+Unit test components using the `render_inline` test helper, asserting against the rendered output:
+
+```ruby
+require "test_helper"
+
+class ExampleComponentTest < ViewComponent::TestCase
+  def test_render_component
+    render_inline(ExampleComponent.new(title: "my title")) { "Hello, World!" }
+
+    assert_component_rendered
+
+    assert_selector("span[title='my title']", text: "Hello, World!")
+    # or, to just assert against the text:
+    assert_text("Hello, World!")
+  end
+end
+```
+
+(Capybara matchers are available if the gem is installed)
+
+_Note: `assert_selector` only matches on visible elements by default. To match on elements regardless of visibility, add `visible: false`. See the [Capybara documentation](https://rubydoc.info/github/jnicklas/capybara/Capybara/Node/Matchers) for more details._
+
+For debugging purposes, the `rendered_content` test helper outputs the rendered HTML.
+
+## Use with RSpec
+
+To enable ViewComponent test helpers in RSpec, add:
+
+```ruby
+# spec/rails_helper.rb
+require "view_component/test_helpers"
+
+RSpec.configure do |config|
+  # ...
+
+  config.include ViewComponent::TestHelpers, type: :component
+  config.include ViewComponent::SystemSpecHelpers, type: :feature
+  config.include ViewComponent::SystemSpecHelpers, type: :system
+end
+```
+
+## Testing Slots
+
+```ruby
+def test_render_component
+  component = ListComponent.new(title: "Fruits").tap do |c|
+    c.with_item { "Apple" }
+    c.with_item { "Orange" }
+    c.with_extra { "<div><span>rendered html</span></div>".html_safe }
+  end
+
+  render_inline(component)
+
+  assert_selector("ul")
+  assert_selector("li", text: "Apple")
+  assert_selector("li", text: "Orange")
+end
+```
+
+## Previews as test cases
+
+Since 2.56.0
+{: .label }
+
+Use `render_preview(name)` to render previews in ViewComponent unit tests:
+
+```ruby
+class ExampleComponentTest < ViewComponent::TestCase
+  def test_render_preview
+    render_preview(:with_default_title)
+
+    assert_text("Example component default")
+  end
+end
+```
+
+## Testing components with behaviors
+
+To test ViewComponents with behaviors, visit a preview in a system test:
+
+```ruby
+class MyComponentSystemTest < ActionDispatch::SystemTestCase
+  def test_default_preview
+    visit("/rails/view_components/my_component/default")
+
+    click_on("Open dialog")
+
+    assert_text("Test Dialog")
+  end
+end
+```
+
+## Best practices
+
+Prefer testing the rendered output over individual methods:
+
+```ruby
+# Good
+assert_selector(".Label", text: "My label")
+
+# Bad
+assert_equal MyComponent.new.label, "My label"
+```
+
+## Without `capybara`
+
+In the absence of `capybara`, assert against the return value of `render_inline`, which is an instance of `Nokogiri::HTML::DocumentFragment`:
+
+```ruby
+def test_render_component
+  result = render_inline(ExampleComponent.new(title: "my title")) { "Hello, World!" }
+
+  assert_includes result.css("span[title='my title']").to_html, "Hello, World!"
+end
+```
+
+## Slots
+
+To test components that use Slots:
+
+```ruby
+def test_renders_slots_with_content
+  render_inline(SlotsComponent.new(footer: "Bye!")) do |component|
+    component.with_title { "Hello!" }
+    component.with_body { "Have a nice day." }
+  end
+
+  assert_selector(".title", text: "Hello!")
+  assert_selector(".body", text: "Have a nice day.")
+end
+```
+
+## Action Pack Variants
+
+Use the `with_variant` helper to test specific variants:
+
+```ruby
+def test_render_component_for_tablet
+  with_variant :tablet do
+    render_inline(ExampleComponent.new(title: "my title")) { "Hello, tablets!" }
+
+    assert_selector("span[title='my title']", text: "Hello, tablets!")
+  end
+end
+```
+
+## Request formats
+
+Use the `with_format` helper to test specific request formats:
+
+```ruby
+def test_render_component_as_json
+  with_format :json do
+    render_inline(MultipleFormatsComponent.new)
+
+    assert_equal(rendered_json["hello"], "world")
+  end
+end
+```
+
+## Configuring the controller used in tests
+
+Since 2.27.0
+{: .label }
+
+Component tests assume the existence of an `ApplicationController` class. To set the controller for a test file, define `vc_test_controller_class`:
+
+```ruby
+class ExampleComponentTest < ViewComponent::TestCase
+  def vc_test_controller_class
+    PublicController
+  end
+
+  def test_component_in_public_controller
+    render_inline ExampleComponent.new
+
+    assert_text "foo"
+  end
+end
+```
+
+To configure the controller used for a test case, use `with_controller_class` from `ViewComponent::TestHelpers`.
+
+```ruby
+class ExampleComponentTest < ViewComponent::TestCase
+  def test_component_in_public_controller
+    with_controller_class PublicController do
+      render_inline ExampleComponent.new
+
+      assert_text "foo"
+    end
+  end
+
+  def test_component_in_authenticated_controller
+    with_controller_class AuthenticatedController do
+      render_inline ExampleComponent.new
+
+      assert_text "bar"
+    end
+  end
+end
+```
+
+## Setting `request.path_parameters`
+
+Since 2.31.0
+{: .label }
+
+Some Rails helpers won't work unless `request.path_parameters` are set correctly, resulting in an `ActionController::UrlGenerationError`.
+
+To set `request.path_parameters` for a test case, use `with_request_url` from `ViewComponent::TestHelpers`:
+
+```ruby
+class ExampleComponentTest < ViewComponent::TestCase
+  def test_with_request_url
+    with_request_url "/products/42" do
+      render_inline ExampleComponent.new # contains i.e. `link_to "French", url_for(locale: "fr")`
+      assert_link "French", href: "/products/42?locale=fr"
+    end
+  end
+end
+```
+
+## Setting `request.host`
+
+Since 3.3.0
+{: .label }
+
+Rails routes that have a subdomain constraint require `request.host` to be set correctly.
+
+To set `request.host` for a test case, use `with_request_url` from `ViewComponent::TestHelpers`:
+
+```ruby
+class ExampleComponentTest < ViewComponent::TestCase
+  def test_with_request_url
+    with_request_url "/products/42", host: "app.example.com" do
+      render_inline ExampleComponent.new # contains i.e. `products_path` that is constrained to the 'app' subdomain
+      assert_link "Products", href: "/products"
+    end
+  end
+end
+```
+
+### Query parameters
+
+Since 2.41.0
+{: .label }
+
+It's also possible to set query parameters:
+
+```ruby
+class ExampleComponentTest < ViewComponent::TestCase
+  def test_with_request_url
+    with_request_url "/products/42?locale=en" do
+      render_inline ExampleComponent.new # contains i.e. `link_to "Recent", url_for(request.query_parameters.merge(filter: "recent"))`
+      assert_link "Recent", href: "/?locale=en&filter=recent"
+    end
+  end
+end
+```
+
+## RSpec configuration
+
+To use RSpec, add the following:
+
+```ruby
+# spec/rails_helper.rb
+require "view_component/test_helpers"
+require "view_component/system_test_helpers"
+require "capybara/rspec"
+
+RSpec.configure do |config|
+  config.include ViewComponent::TestHelpers, type: :component
+  config.include ViewComponent::SystemTestHelpers, type: :component
+  config.include Capybara::RSpecMatchers, type: :component
+end
+```
+
+To access Devise's controller helper methods in tests, add the following:
+
+```ruby
+RSpec.configure do |config|
+  config.include Devise::Test::ControllerHelpers, type: :component
+
+  config.before(:each, type: :component) do
+    @request = vc_test_controller.request
+  end
+end
+```
+
+Specs created by the generator have access to test helpers like `render_inline`. For example:
+
+```ruby
+require "rails_helper"
+
+RSpec.describe ExampleComponent, type: :component do
+  it "renders component" do
+    render_inline(described_class.new(title: "my title")) { "Hello, World!" }
+
+    expect(page).to have_css "span[title='my title']", text: "Hello, World!"
+    # or, to just assert against the text
+    expect(page).to have_text "Hello, World!"
+  end
+end
+```
+
+To use component previews:
+
+```ruby
+# config/application.rb
+config.view_component.previews.paths << "#{Rails.root}/spec/components/previews"
+```
+
+## Component system tests
+
+Use `with_rendered_component_path` with `render_inline` to system test components:
+
+```rb
+class ViewComponentSystemTest < ViewComponent::SystemTestCase
+  def test_simple_js_interaction_in_browser_without_layout
+    with_rendered_component_path(render_inline(SimpleJavascriptInteractionWithJsIncludedComponent.new)) do |path|
+      visit(path)
+
+      assert(find("[data-hidden-field]", visible: false))
+      find("[data-button]", text: "Click Me To Reveal Something Cool").click
+      assert(find("[data-hidden-field]", visible: true))
+    end
+  end
+end
+```
+
+For components that depend on a layout, provide the `layout` argument:
+
+```rb
+class ViewComponentSystemTest < ViewComponent::SystemTestCase
+  def test_simple_js_interaction_in_browser_with_layout
+    with_rendered_component_path(render_inline(SimpleJavascriptInteractionWithoutJsIncludedComponent.new), layout: "application") do |path|
+      # ...
+    end
+  end
+end
+```
+
