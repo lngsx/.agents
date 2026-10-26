@@ -54,6 +54,7 @@ files:
       reads_from:
         - knowledge/ruby-rails/ruby.md
         - knowledge/ruby-rails/turbo.md
+        - knowledge/ruby-rails/view-transitions-in-turbo.md
         - knowledge/rust.md
         - knowledge/typescript.md
         - knowledge/agent-skills/specification.md
@@ -85,6 +86,19 @@ files:
         - morphing page refreshes (broadcasts_refreshes, data-turbo-permanent)
         - stream signing is integrity, not access control
         - failed-request interface (§8b — project-specific doctrine)
+      reads_from:
+        - knowledge/caveats.md
+
+  - - knowledge/ruby-rails/view-transitions-in-turbo.md
+    - View Transitions inside Turbo: the undocumented integration recipe, from a dev.to article
+    - light
+    - purpose: Bank of the only known recipe for bolting View Transitions onto Turbo (frame render override + Drive before-render, named-transition CSS). Charged with a header stating the article-body setup is owner-confirmed (Oct 2026) while the Turbo-cache workaround in the comments was never tested. View snippets were converted Slim→ERB on the owner's call; everything else verbatim. Caveat must be read first (Chrome-111-era staleness).
+      key_concepts:
+        - turbo:before-frame-render render override with document.startViewTransition
+        - turbo:before-render for whole-page Drive cross-fade
+        - named view transitions (view-transition-name + ::view-transition-old/new pseudo-elements)
+        - never name the Turbo Frame element itself
+        - Turbo cache re-applies JS on transition restore (commenter claim, untested)
       reads_from:
         - knowledge/caveats.md
 

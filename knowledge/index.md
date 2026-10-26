@@ -7,6 +7,10 @@ Copy from these files verbatim (see AGENTS.md → Shared conventions).
 - `ruby-rails/turbo.md` — Turbo (Hotwire) reference: Drive, frames, streams,
   morphing refreshes, turbo-rails helpers
   (https://github.com/fmanimashaun/claude-skills — see caveats)
+- `ruby-rails/view-transitions-in-turbo.md` — View Transitions inside Turbo
+  (frames + Drive): the undocumented integration recipe
+  (https://dev.to/nejremeslnici/how-to-use-view-transitions-in-hotwire-turbo-1kdi
+  — see caveats)
 - `rust.md` — empty stub
 - `typescript.md` — empty stub
 - `agent-skills/specification.md` — Agent Skills format spec

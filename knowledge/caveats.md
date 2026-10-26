@@ -40,6 +40,26 @@ entry" — plus a pointer into their project log (`Retask #258`). Compose the
 approach, never the component names. Rest of §8b: same treatment as
 ruby.md's ruby-lsp note — surface the project-specific bits when composing.
 
+- `ruby-rails/view-transitions-in-turbo.md` — from
+  https://dev.to/nejremeslnici/how-to-use-view-transitions-in-hotwire-turbo-1kdi
+  (Matouš Borák, Feb/Mar 2023). Provenance is known: public article, named
+  author. Banked because it holds the only known recipe for bolting View
+  Transitions onto Turbo (frames + Drive) — a hack that was never officially
+  documented. Owner tried the article-body setup on a real project; it works
+  as of Oct 2026. Epoch-stale otherwise: written against Chrome 111
+  (Mar 2023), so its browser-support claims and the `contain: paint|layout`
+  requirement may be outdated — check current docs before building on them.
+  (View snippets converted Slim→ERB on the owner's call.)
+
+### ruby-rails/view-transitions-in-turbo.md — the Turbo-cache workaround
+
+The finding in the comments section (Turbo restores a page from cache during
+a view transition and re-applies JS/Stimulus to the same DOM; fix is
+`<meta name="turbo-cache-control" content="no-cache">`) comes from a
+commenter (Tom Arild Jakobsen), not the article author, and was **never
+tested by the owner**. Treat it as unverified 2023 Turbo behavior — verify
+against current Turbo before relying on it.
+
 ## ruby-rails/ruby.md
 
 - "This project uses ruby-lsp" is specific to the project it was written in.
