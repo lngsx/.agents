@@ -9,6 +9,9 @@ below.
 
 Across every tool in this repo:
 
+- Commits use conventional commits. `feat:` is anything the pipeline
+  consumes or runs — knowledge entries, scripts, agent instructions.
+  `docs:` is only writing about the repo itself (README, projectmap).
 - Keep the code simple and readable — clear names, obvious flow.
 - Don't over-engineer. No config files, no plugin systems, no abstractions ahead
   of need.
