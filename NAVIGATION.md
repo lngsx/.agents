@@ -57,6 +57,7 @@ files:
         - knowledge/typescript.md
         - knowledge/agent-skills/specification.md
         - knowledge/agent-skills/best-practices.md
+        - knowledge/agent-skills/optimizing-descriptions.md
         - knowledge/caveats.md
 
   - - knowledge/ruby.md
@@ -109,6 +110,17 @@ files:
         - gotchas sections
         - plan-validate-execute
         - defaults, not menus
+
+  - - knowledge/agent-skills/optimizing-descriptions.md
+    - Description-triggering optimization guide (copied from agentskills.io)
+    - dense
+    - purpose: Exact copy of how to test and improve a skill's `description` field so it triggers reliably — eval queries, trigger rates, train/validation splits, the optimization loop. Stored verbatim including a `> ` blockquote prefix on the Documentation Index block (pasted this way; flagged, not cleaned).
+      key_concepts:
+        - description as the whole trigger burden
+        - eval queries (should-trigger / should-not-trigger, near-misses)
+        - trigger rate (runs where SKILL.md was loaded)
+        - train/validation split to avoid overfitting
+        - 1024-character description limit
 
   - - bin/frontmatter_concat
     - Concatenates docs with YAML front matter stripped

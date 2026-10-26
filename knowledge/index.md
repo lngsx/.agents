@@ -10,4 +10,7 @@ Copy from these files verbatim (see AGENTS.md → Shared conventions).
   (https://agentskills.io/specification)
 - `agent-skills/best-practices.md` — how to write good skill content
   (https://agentskills.io/skill-creation)
+- `agent-skills/optimizing-descriptions.md` — how to test and improve a skill's
+  `description` so it triggers reliably
+  (https://agentskills.io/skill-creation/optimizing-skill-descriptions)
 - `caveats.md` — context warnings about the files above; check before composing
