@@ -105,10 +105,22 @@ existing rule contradicts a convention, don't resolve it: list the conflict
 and let the user decide.
 
 **Skill output.** If the user asks for a skill instead, wrap the same content
-in skill format rather than a plain agent file. Read
-`knowledge/agent-skills/specification.md` for the skill format and
-`knowledge/agent-skills/best-practices.md` for how to write good skill
-content. Follow both. The content rules above don't change.
+in skill format rather than a plain agent file. The content rules above don't
+change. In order:
+
+1. Read every skill doc under `knowledge/agent-skills/` plus the source
+   knowledge file and `caveats.md` before writing anything — they define the
+   frontmatter rules and what makes a good name and description.
+2. Propose 2–3 name candidates (frontmatter `name` = directory name) and a
+   draft description drawn from what those docs teach. Wait for the user's
+   pick — don't scaffold first.
+3. Copy verbatim parts with bash (`head`/`tail` into `SKILL.md`) when the
+   content needs no cleanup first; when it does, compose — keeping the
+   approach the caveat demands, without the foreign names it flags.
+4. Verify before calling it done: `grep` the composed parts for the terms
+   the caveat flagged — the only check that proves the rewrite dropped them
+   all — and add a note in the skill stating which parts are verbatim and
+   which composed.
 
 ## Leave README.md alone
 
