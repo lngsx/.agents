@@ -17,6 +17,9 @@ Across every tool in this repo:
   of need.
 - Written text (comments, docs) follows the ghost-writer voice: direct, simple,
   honest, no fluff.
+- Updating or writing prose content for the repo itself — caveats, knowledge
+  files, README — load the `ghost-write` skill first. Reference material like
+  this is never first person; write it plain, not narrated.
 - When the user pastes full-page content to store — in `knowledge/`, a skill, or
   anywhere else — copy it verbatim. Do not edit, improve, reword, reorganize, or
   clean it up. This applies no matter what the content is or where it's going.

@@ -21,7 +21,7 @@ files:
   - - AGENTS.md
     - Agent instructions: shared conventions plus per-task sections
     - dense
-    - purpose: The rulebook agents follow in this repo. Defines shared conventions (ghost-writer voice, as-is paste rule) and per-task sections — build/serve llms.txt, compose agent files and skills.
+    - purpose: The rulebook agents follow in this repo. Defines shared conventions (ghost-writer voice, as-is paste rule, ghost-write skill for repo prose — never first person) and per-task sections — build/serve llms.txt, compose agent files and skills.
       key_concepts:
         - compose task (fresh compose, blend, skill output)
         - as-is paste convention
@@ -52,7 +52,8 @@ files:
       key_concepts:
         - index-first rule ("if it's not on the index, it doesn't exist")
       reads_from:
-        - knowledge/ruby.md
+        - knowledge/ruby-rails/ruby.md
+        - knowledge/ruby-rails/turbo.md
         - knowledge/rust.md
         - knowledge/typescript.md
         - knowledge/agent-skills/specification.md
@@ -60,16 +61,30 @@ files:
         - knowledge/agent-skills/optimizing-descriptions.md
         - knowledge/caveats.md
 
-  - - knowledge/ruby.md
+  - - knowledge/ruby-rails/ruby.md
     - Hand-written Ruby conventions
     - dense
-    - purpose: The user's own Ruby/Rails style rules, copied from the old README with content preserved. Read when composing a Ruby agent file.
+    - purpose: The user's own Ruby/Rails style rules, copied from the old README with content preserved. Read when composing a Ruby agent file. Language-level conventions; framework topics live alongside in ruby-rails/.
       key_concepts:
         - 2-space formatting, method organization
         - functional style (map, filter_map, then)
         - modern Ruby (pattern matching, endless methods)
         - dry-struct over Struct
         - RBS inline annotations over YARD
+      reads_from:
+        - knowledge/caveats.md
+
+  - - knowledge/ruby-rails/turbo.md
+    - Turbo (Hotwire/v8) reference for Rails, copied from a low-visibility repo
+    - dense
+    - purpose: Cairo-style reference on Turbo Drive, frames, streams, morphing refreshes, and turbo-rails helpers. Copied from fmanimashaun/claude-skills; caveat must be read first (provenance unverified, source-author component doctrine in §8b). Pasted-verbatim rule was excepted here — dangling sibling-doc references were removed before banking.
+      key_concepts:
+        - Turbo Drive (body swaps, 303/422/500 contract)
+        - turbo frames (targeting, _top/_parent, lazy loading)
+        - turbo streams (insertion actions, id de-duplication, method: :morph)
+        - morphing page refreshes (broadcasts_refreshes, data-turbo-permanent)
+        - stream signing is integrity, not access control
+        - failed-request interface (§8b — project-specific doctrine)
       reads_from:
         - knowledge/caveats.md
 
@@ -86,10 +101,13 @@ files:
   - - knowledge/caveats.md
     - Context warnings about knowledge files
     - light
-    - purpose: Holds warnings for copied content that doesn't hold in every project (e.g. ruby.md assumes ruby-lsp). The agent reads this before composing and surfaces caveats instead of resolving them. The copies themselves stay untouched.
+    - purpose: Holds warnings for copied content that doesn't hold in every project (e.g. ruby.md assumes ruby-lsp) and a low-visibility-sources section for knowledge copied from small unverified repos (safe-to-follow reviews, provenance notes). The agent reads this before composing and surfaces caveats instead of resolving them. The copies themselves stay untouched.
       key_concepts:
         - annotation-not-modification
         - flag-don't-resolve discipline
+        - low-visibility sources (unverified provenance, tested-on-real-project trade)
+        - safe-to-follow review
+        - someone else's project doctrine (compose approach, not names)
 
   - - knowledge/agent-skills/specification.md
     - Agent Skills format spec (copied from agentskills.io)
