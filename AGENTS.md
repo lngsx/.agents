@@ -14,6 +14,12 @@ Across every tool in this repo:
   of need.
 - Written text (comments, docs) follows the ghost-writer voice: direct, simple,
   honest, no fluff.
+- When the user pastes full-page content to store — in `knowledge/`, a skill, or
+  anywhere else — copy it verbatim. Do not edit, improve, reword, reorganize, or
+  clean it up. This applies no matter what the content is or where it's going.
+  Copy-paste noise that comes with the page (site artifacts, HTML escapes, and
+  the like) stays too; point it out, but only remove it if the user explicitly
+  asks.
 - When someone asks to improve a tool, push it toward the goal it already
   serves. Extend what's there; don't bolt on machinery.
 
@@ -70,6 +76,33 @@ bin/serve_llms_txt
 
 Then `http://localhost:9999/view_component/llms.txt`. Set `PORT` to move it off
 9999. It's Caddy's file server under the hood, so Caddy needs to be installed.
+
+## Task: compose an agent file
+
+Conventions live in `knowledge/` — see `knowledge/index.md` for what's
+available. Each file is a bank of sections the user wrote by hand. When the
+user asks for an agent file for some language or stack, compose it from these
+files. First read `knowledge/caveats.md` — it holds context warnings about the
+knowledge files. If a caveat applies to the user's target project, surface it
+to the user and let them decide; never resolve or work around it yourself.
+
+**Fresh compose.** Read `knowledge/<lang>.md` and copy its sections into the
+new file verbatim. Do not reword, reorganize, or add opinions of your own. If
+the user narrows the scope ("only pick XYZ"), include only the sections that
+match — still copied verbatim. If the user names a destination, write there.
+Otherwise write to `staging/` at the repo root and let the user move the file.
+
+**Blending into an existing file.** If the user points at an existing agent
+file, read it and append only the conventions that are missing. Never rewrite,
+reorder, or improve what's already there — change as little as possible. If an
+existing rule contradicts a convention, don't resolve it: list the conflict
+and let the user decide.
+
+**Skill output.** If the user asks for a skill instead, wrap the same content
+in skill format rather than a plain agent file. Read
+`knowledge/agent-skills/specification.md` for the skill format and
+`knowledge/agent-skills/best-practices.md` for how to write good skill
+content. Follow both. The content rules above don't change.
 
 ## Leave README.md alone
 

@@ -1,2 +1,5 @@
 # Cloned library repos are inputs, not part of this repo.
 *repo*/
+
+# Composed agent files land here until the user moves them.
+/staging/
